@@ -12,6 +12,18 @@ navigator.mediaDevices.getUserMedia({
     video: true
 }).then(stream => {
     addVideoStream(myVideo, stream)
+
+    myPeer.on('call', call => {
+        call.answer(stream)
+        const video = document.createElement('video')
+        call.on('stream', userVideoStream => {
+            addVideoStream(video, userVideoStream)
+        })
+    })
+
+    socket.on('user-connected', userId => {
+        connectToNewUser(userId, stream)
+    })
 }).catch(err => {
     alert('erro ai')
 })
@@ -20,15 +32,24 @@ myPeer.on('open', id => {
     socket.emit('join-room', ROOM_ID, id)
 })
 socket.emit('join-room', ROOM_ID, 10)
-socket.on('user-connected', userId => {
-    console.log('User conneted: ' + userId)
-})
 
 function addVideoStream (video, stream) {
-    console.log(stream)
     video.srcObject = stream
     video.addEventListener('loadedMetadata', () => {
         video.play()
     })
     videoGrid.append(video)
+}
+
+function connectToNewUser(userId, stream) {
+    const call = myPeer.call(userId, stream)
+    const video = document.createElement('video')
+
+    call.on('stream', userVideoStream => {
+        addVideoStream(video, userVideoStream)
+    })
+
+    call.on('close', () => {
+        video.remove()
+    })
 }
